@@ -12,7 +12,7 @@ Useful commands to get started
     **netcat** 10.10.10.10 22 : Helps identify what service is running on a particular port while showing the version etc... This is called Banner grabbing
 
     **nc** -nv 10.129.42.253 21 : The nc command is the short way of netcat and here we are saying to output the version of the running service
-*   <mark style="color:yellow;">**nmap**</mark>\*\* :\*\* Used for scanning ports
+*   <mark style="color:yellow;">**nmap**</mark> : Used for scanning ports
 
     **nmap** 10.126.10.10 : Will show us all available ports or open ports on this web server
 
@@ -25,10 +25,10 @@ Useful commands to get started
     The -sC parameter run by default some useful scripts, but we can run specific scripts :
 
     **nmap** --script \<script name> -p\<port> \<host>
-*   <mark style="color:yellow;">**ftp**</mark>\*\* :\*\*
+*   <mark style="color:yellow;">**ftp**</mark> :
 
     **ftp** -p 10.129.42.253 : So here we connected to the service using ftp.
-*   <mark style="color:yellow;">**smb**</mark>\*\* :\*\* Used by windows for sharing files (Allows users and admins to share folders and make them accessible remotely by other users.
+*   <mark style="color:yellow;">**smb**</mark> : Used by windows for sharing files (Allows users and admins to share folders and make them accessible remotely by other users.
 
     **nmap** --script smb-os-discovery.nse -p445 10.10.10.40 : So here we used a specific script to interact with smb and get the OS version.
 
@@ -37,13 +37,13 @@ Useful commands to get started
     \*\*smbclient -\*\*U bob \\\\\\\10.129.42.15\\\users : The -U means user so here we are trying to log in as the user bob so he will demand password and after that we can do ls for example and access different files etc...
 
     When connected to the client with SMB, can we use commands like cd to get into a directory and get command if we want to see the contents of a file...
-*   <mark style="color:yellow;">**snmp**</mark>\*\* :\*\* Interacts with different equipments
+*   <mark style="color:yellow;">**snmp**</mark> : Interacts with different equipments
 
     **snmpwalk** -v 2c -c public 10.129.42.253 1.3.6.1.2.1.1.5.0
 
 ## <mark style="color:blue;">Expanding the terminal</mark>
 
-* <mark style="color:yellow;">**tmux**</mark>\*\* :\*\* Can exapnd the terminal for example put 2 windows next to each other in one terminal. The default key to enter tmux commands is Ctrl+B
+* <mark style="color:yellow;">**tmux**</mark> : Can exapnd the terminal for example put 2 windows next to each other in one terminal. The default key to enter tmux commands is Ctrl+B
 
 ## <mark style="color:blue;">Web enumeration</mark>
 
@@ -472,3 +472,54 @@ ebs123@htb[/htb]$ chmod 600 id_rsa
 ebs123@htb[/htb]$ ssh user@10.10.10.10 -i id_rsa
 ```
 
+Note that we used the command 'chmod 600 id\_rsa' on the key after we created it on our machine to change the file's permissions to be more restrictive. If ssh keys have lax permissions, i.e., maybe read by other people, the ssh server would prevent them from working.
+
+If we find ourselves with write access to a users`/.ssh/` directory, we can place our public key in the user's ssh directory at `/home/user/.ssh/authorized_keys.`We must first create a new key with `ssh-keygen` and the `-f` flag to specify the output file:&#x20;
+
+```shell-session
+ssh-keygen -f key
+```
+
+This will give us two files: `key` (which we will use with `ssh -i`) and `key.pub`, which we will copy to the remote machine. Let us copy `key.pub`, then on the remote machine, we will add it into `/root/.ssh/authorized_keys`:
+
+```shell-session
+user@remotehost$ echo "ssh-rsa AAAAB...SNIP...M= user@parrot" >> /root/.ssh/authorized_keys
+```
+
+Now, the remote server should allow us to log in as that user by using our private key:
+
+```shell-session
+ebs123@htb[/htb]$ ssh root@10.10.10.10 -i key
+
+root@remotehost# 
+```
+
+As we can see, we can now ssh in as the user `root`.\
+
+
+### Checking OS version
+
+We can check the os version of the attacked machine :&#x20;
+
+```
+(cat /proc/version || uname -a ) 2>/dev/null
+lsb_release -a 2>/dev/null
+```
+
+### Env info
+
+Interesting information, passwords or API keys in the environment variables?
+
+```bash
+(env || set) 2>/dev/null
+```
+
+### Kernel exploits
+
+Check the kernel version and if there is some exploit that can be used to escalate privileges
+
+```bash
+cat /proc/version
+uname -a
+searchsploit "Linux Kernel"
+```
