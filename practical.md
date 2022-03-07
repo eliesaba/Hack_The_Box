@@ -417,6 +417,18 @@ User & Groups: uid=33(www-data) gid=33(www-data) groups=33(www-data)
 
 As we can see, once the script runs, it starts collecting information and displaying it in an excellent report. Let us discuss some of the vulnerabilities that we should look for in the output from these scripts.
 
+### Run bash of another user :&#x20;
+
+`user1@gettingstartedprivesc-421121-54f455c55f-v8s7h:~$ sudo -l`
+
+`Matching Defaults entries for user1 on gettingstartedprivesc-421121-54f455c55f-v8s7h: env_reset, mail_badpass, secure_path=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin`
+
+`User user1 may run the following commands on gettingstartedprivesc-421121-54f455c55f-v8s7h: (user2 : user2) NOPASSWD: /bin/bash`
+
+The following output shows us that user1 can run the bash of user2 without the need of a password so we will connect to the  bash of user2 with the following command :&#x20;
+
+**sudo -u user2 /bin/bash**
+
 ### Kernel Exploits :&#x20;
 
 Whenever we encounter a server running an old operating system, we should start by looking for potential kernel vulnerabilities that may exist. For example, the above script showed us the Linux version to be `3.9.0-73-generic`. If we Google exploits for this version or use `searchsploit`, we would find a `CVE-2016-5195`, otherwise known as `DirtyCow`. We can search for and download the [DirtyCow](https://github.com/dirtycow/dirtycow.github.io/wiki/PoCs) exploit and run it on the server to gain root access.
@@ -523,3 +535,9 @@ cat /proc/version
 uname -a
 searchsploit "Linux Kernel"
 ```
+
+## <mark style="color:blue;">Transferring files</mark>
+
+Tools like Metasploit with a Meterpreter shell allow us to use the `Upload` command to upload a file, we need to learn methods to transfer files with a standard reverse shell.
+
+### Using wget
