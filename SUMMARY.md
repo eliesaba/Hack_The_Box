@@ -1,4 +1,4 @@
 # Table of contents
 
-* [📚 Some Theory](README.md)
-* [⚙ Practical](practical.md)
+* [⚙ Practical](README.md)
+  * [📚 Some Theory](practical/readme.md)
